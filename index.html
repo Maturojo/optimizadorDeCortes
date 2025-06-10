@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Optimizador de Cortes - SurMaderas</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    label, input { display: block; margin: 8px 0; }
+    .corte { margin-bottom: 4px; }
+  </style>
+</head>
+<body>
+  <h1>Optimizador de Cortes</h1>
+
+  <h2>Medida de la placa (en metros)</h2>
+  <label>Ancho (m): <input type="number" step="0.01" id="placaAncho"></label>
+  <label>Alto (m): <input type="number" step="0.01" id="placaAlto"></label>
+
+  <h2>Agregar corte (en centímetros)</h2>
+  <label>Ancho (cm): <input type="number" id="corteAncho"></label>
+  <label>Alto (cm): <input type="number" id="corteAlto"></label>
+  <button onclick="agregarCorte()">Agregar corte</button>
+
+  <h2>Cortes cargados</h2>
+  <ul id="listaCortes"></ul>
+
+  <script>
+    const cortes = [];
+    let placa = { ancho: 0, alto: 0 };
+
+    function actualizarMedidaPlaca() {
+      const anchoM = parseFloat(document.getElementById('placaAncho').value);
+      const altoM = parseFloat(document.getElementById('placaAlto').value);
+
+      if (!isNaN(anchoM) && !isNaN(altoM) && anchoM > 0 && altoM > 0) {
+        placa.ancho = anchoM * 1000; // metros a milímetros
+        placa.alto = altoM * 1000;
+      }
+    }
+
+    function agregarCorte() {
+      actualizarMedidaPlaca();
+
+      const anchoCm = parseFloat(document.getElementById('corteAncho').value);
+      const altoCm = parseFloat(document.getElementById('corteAlto').value);
+
+      if (isNaN(anchoCm) || isNaN(altoCm) || anchoCm <= 0 || altoCm <= 0) {
+        alert('Por favor ingresá medidas válidas para el corte');
+        return;
+      }
+
+      const corte = {
+        ancho: anchoCm * 10, // centímetros a milímetros
+        alto: altoCm * 10
+      };
+
+      cortes.push(corte);
+      mostrarCortes();
+
+      document.getElementById('corteAncho').value = '';
+      document.getElementById('corteAlto').value = '';
+    }
+
+    function mostrarCortes() {
+      const lista = document.getElementById('listaCortes');
+      lista.innerHTML = '';
+      cortes.forEach((corte, i) => {
+        const li = document.createElement('li');
+        li.textContent = `Corte ${i + 1}: ${corte.ancho} mm x ${corte.alto} mm`;
+        lista.appendChild(li);
+      });
+    }
+  </script>
+</body>
+</html>
