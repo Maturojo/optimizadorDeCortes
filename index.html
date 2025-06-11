@@ -12,6 +12,14 @@
     <body>
     <h1>Optimizador de Cortes</h1>
 
+    <h2>Seleccionar placa</h2>
+    <select id="selectorPlaca" onchange="seleccionarPlaca()">
+    <option value="">-- Seleccionar --</option>
+    <option value="2.44,1.83">MDF 15mm - 2.44x1.83 m</option>
+    <option value="2.60,1.83">Melamina 18mm - 2.60x1.83 m</option>
+    <option value="2.20,1.60">Multilaminado - 2.20x1.60 m</option>
+    </select>
+
     <h2>Medida de la placa (en metros)</h2>
     <label>Ancho (m):
         <input type="number" step="0.01" id="placaAncho" ></label>
@@ -31,10 +39,26 @@
     <h2>Resumen</h2>
     <p id="resumen"></p>
 
+    <h2>Vista previa</h2>
+    <canvas id="vistaPrevia" width="500" height="500" style="border:1px solid #000;"></canvas>
+    <button onclick="dibujarCortes()">Dibujar cortes</button>
+
 
     <script>
         const cortes = [];
         let placa = { ancho: 0, alto: 0 };
+
+        function seleccionarPlaca() {
+        const valor = document.getElementById('selectorPlaca').value;
+
+        if (valor) {
+            const [ancho, alto] = valor.split(',').map(Number);
+            document.getElementById('placaAncho').value = ancho;
+            document.getElementById('placaAlto').value = alto;
+
+            actualizarMedidaPlaca();
+        }
+        }
 
         function actualizarMedidaPlaca() {
         const anchoM = parseFloat(document.getElementById('placaAncho').value);
@@ -60,7 +84,8 @@
 
         const corte = {
             ancho: anchoCm * 10, // centímetros a milímetros
-            alto: altoCm * 10
+            alto: altoCm * 10,
+            cantidad: cantidad
         };
 
         cortes.push(corte);
@@ -123,6 +148,79 @@
         resumen.textContent = `🔴 Los cortes ocupan ${porcentaje}% del área de la placa. No entran.`;
         }
     }
+    
+    function dibujarCortes() {
+    actualizarMedidaPlaca();
+
+    const canvas = document.getElementById("vistaPrevia");
+    const ctx = canvas.getContext("2d");
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (placa.ancho === 0 || placa.alto === 0) {
+        alert("Ingresá primero la medida de la placa");
+        return;
+    }
+
+    const escala = Math.min(canvas.width / placa.ancho, canvas.height / placa.alto);
+
+    // Dibujar la placa
+    ctx.fillStyle = "#eee";
+    ctx.fillRect(0, 0, placa.ancho * escala, placa.alto * escala);
+    ctx.strokeRect(0, 0, placa.ancho * escala, placa.alto * escala);
+
+    // Variables de nesting
+    let posiciones = [];
+    posiciones.push({ x: 0, y: 0, ancho: placa.ancho, alto: placa.alto });
+
+    cortes.forEach((corte, index) => {
+        for (let i = 0; i < corte.cantidad; i++) {
+        let colocado = false;
+
+        for (let j = 0; j < posiciones.length; j++) {
+            const espacio = posiciones[j];
+
+            if (corte.ancho <= espacio.ancho && corte.alto <= espacio.alto) {
+            const x = espacio.x;
+            const y = espacio.y;
+
+            // Dibujamos el corte
+            ctx.fillStyle = "#a5d6a7";
+            ctx.fillRect(x * escala, y * escala, corte.ancho * escala, corte.alto * escala);
+            ctx.strokeRect(x * escala, y * escala, corte.ancho * escala, corte.alto * escala);
+
+            // Reservamos el espacio ocupado
+            posiciones.splice(j, 1);
+
+            // Creamos nuevos espacios libres
+            posiciones.push({
+                x: x + corte.ancho,
+                y: y,
+                ancho: espacio.ancho - corte.ancho,
+                alto: corte.alto
+            });
+
+            posiciones.push({
+                x: x,
+                y: y + corte.alto,
+                ancho: espacio.ancho,
+                alto: espacio.alto - corte.alto
+            });
+
+            colocado = true;
+            break;
+            }
+        }
+
+        if (!colocado) {
+            console.log("No entra el corte", corte);
+            // Podríamos mostrar visualmente que no entró
+        }
+        }
+    });
+    }
+
+    
     </script>
 </body>
 </html>
