@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Optimizador de Cortes - SurMaderas</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        label, input { display: block; margin: 8px 0; }
+        .corte { margin-bottom: 4px; }
+    </style>
+    </head>
+    <body>
+    <h1>Optimizador de Cortes</h1>
+
+    <h2>Seleccionar placa</h2>
+    <select id="selectorPlaca" onchange="seleccionarPlaca()">
+    <option value="">-- Seleccionar --</option>
+    <option value="2.44,1.83">MDF 15mm - 2.44x1.83 m</option>
+    <option value="2.60,1.83">Melamina 18mm - 2.60x1.83 m</option>
+    <option value="2.20,1.60">Multilaminado - 2.20x1.60 m</option>
+    </select>
+
+    <h2>Medida de la placa (en metros)</h2>
+    <label>Ancho (m):
+        <input type="number" step="0.01" id="placaAncho" ></label>
+    <label>Alto (m): <input type="number" step="0.01" id="placaAlto"   ></label>
+
+    <h2>Agregar corte (en centímetros)</h2>
+    <label>Ancho (cm): <input type="number" id="corteAncho"></label>
+    <label>Alto (cm): <input type="number" id="corteAlto"></label>
+    <label>Cantidad: <input type="number" id="corteCantidad" value="1" min="1"></label>
+    <button onclick="agregarCorte()">Agregar corte</button>
+
+    <h2>Cortes cargados</h2>
+    <ul id="listaCortes"></ul>
+
+    <button onclick="mostrarResumen()">Verificar si entran los cortes</button>
+
+    <h2>Resumen</h2>
+    <p id="resumen"></p>
+
+    <h2>Vista previa</h2>
+    <canvas id="vistaPrevia" width="500" height="500" style="border:1px solid #000;"></canvas>
+    <button onclick="dibujarCortes()">Dibujar cortes</button>
+
+
+    <script>
+        const cortes = [];
+        let placa = { ancho: 0, alto: 0 };
+
+        function seleccionarPlaca() {
+        const valor = document.getElementById('selectorPlaca').value;
+
+        if (valor) {
+            const [ancho, alto] = valor.split(',').map(Number);
+            document.getElementById('placaAncho').value = ancho;
+            document.getElementById('placaAlto').value = alto;
+
+            actualizarMedidaPlaca();
+        }
+        }
+
+        function actualizarMedidaPlaca() {
+        const anchoM = parseFloat(document.getElementById('placaAncho').value);
+        const altoM = parseFloat(document.getElementById('placaAlto').value);
+
+        if (!isNaN(anchoM) && !isNaN(altoM) && anchoM > 0 && altoM > 0) {
+            placa.ancho = anchoM * 1000; // metros a milímetros
+            placa.alto = altoM * 1000;
+        }
+        }
+
+        function agregarCorte() {
+        actualizarMedidaPlaca();
+
+        const anchoCm = parseFloat(document.getElementById('corteAncho').value);
+        const altoCm = parseFloat(document.getElementById('corteAlto').value);
+        const cantidad = parseInt(document.getElementById('corteCantidad').value);
+
+        if (isNaN(anchoCm) || isNaN(altoCm) || anchoCm <= 0 || altoCm <= 0) {
+            alert('Por favor ingresá medidas válidas para el corte');
+            return;
+        }
+
+        const corte = {
+            ancho: anchoCm * 10, // centímetros a milímetros
+            alto: altoCm * 10,
+            cantidad: cantidad
+        };
+
+        cortes.push(corte);
+        mostrarCortes();
+
+        document.getElementById('corteAncho').value = '';
+        document.getElementById('corteAlto').value = '';
+        }
+
+        function mostrarCortes() {
+        const lista = document.getElementById('listaCortes');
+        lista.innerHTML = '';
+        cortes.forEach((corte, i) => {
+            const li = document.createElement('li');
+            li.textContent = `Corte ${i + 1}: ${corte.ancho} mm x ${corte.alto} mm`;
+            lista.appendChild(li);
+        });
+        }
+
+        mostrarResumen();
+    
+
+    function mostrarResumen() {
+        actualizarMedidaPlaca();
+        const resumen = document.getElementById('resumen');
+
+        if (placa.ancho === 0 || placa.alto === 0) {
+        resumen.textContent = "Ingresá la medida de la placa para calcular.";
+        return;
+        }
+
+        if (cortes.length === 0) {
+        resumen.textContent = "Todavía no cargaste ningún corte.";
+        return;
+        }
+
+        for (let i = 0; i < cortes.length; i++) {
+            const corte = cortes[i];
+                if (corte.ancho > placa.ancho || corte.alto > placa.alto) {
+                resumen.textContent = `🔴 El corte ${i + 1} (${corte.ancho}mm x ${corte.alto}mm) es más grande que la placa y no entra.`;
+                return;
+                }
+        }
+
+        // Si pasan el control de tamaño individual, calculamos el área total
+        const areaPlaca = placa.ancho * placa.alto;
+        let areaCortes = 0;
+
+        
+
+        cortes.forEach(corte => {
+        areaCortes += corte.ancho * corte.alto;
+        });
+
+        const porcentaje = ((areaCortes / areaPlaca) * 100).toFixed(2);
+
+        if (areaCortes <= areaPlaca) {
+        resumen.textContent = `🟢 Los cortes ocupan ${porcentaje}% del área de la placa. Entran.`;
+        } else {
+        resumen.textContent = `🔴 Los cortes ocupan ${porcentaje}% del área de la placa. No entran.`;
+        }
+    }
+
+    function dibujarCortes() {
+    actualizarMedidaPlaca();
+
+    const canvas = document.getElementById("vistaPrevia");
+    const ctx = canvas.getContext("2d");
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (placa.ancho === 0 || placa.alto === 0) {
+        alert("Ingresá primero la medida de la placa");
+        return;
+    }
+
+    const escala = Math.min(canvas.width / placa.ancho, canvas.height / placa.alto);
+
+    // Dibujar la placa
+    ctx.fillStyle = "#eee";
+    ctx.fillRect(0, 0, placa.ancho * escala, placa.alto * escala);
+    ctx.strokeRect(0, 0, placa.ancho * escala, placa.alto * escala);
+
+    // Variables de nesting
+    let posiciones = [];
+    posiciones.push({ x: 0, y: 0, ancho: placa.ancho, alto: placa.alto });
+
+    cortes.forEach((corte, index) => {
+        for (let i = 0; i < corte.cantidad; i++) {
+        let colocado = false;
+
+        for (let j = 0; j < posiciones.length; j++) {
+            const espacio = posiciones[j];
+
+            if (corte.ancho <= espacio.ancho && corte.alto <= espacio.alto) {
+            const x = espacio.x;
+            const y = espacio.y;
+
+            // Dibujamos el corte
+            ctx.fillStyle = "#a5d6a7";
+            ctx.fillRect(x * escala, y * escala, corte.ancho * escala, corte.alto * escala);
+            ctx.strokeRect(x * escala, y * escala, corte.ancho * escala, corte.alto * escala);
+
+            // Reservamos el espacio ocupado
+            posiciones.splice(j, 1);
+            
+
+            // Creamos nuevos espacios libres
+            posiciones.push({
+                x: x + corte.ancho,
+                y: y,
+                ancho: espacio.ancho - corte.ancho,
+                alto: corte.alto
+            });
+
+            posiciones.push({
+                x: x,
+                y: y + corte.alto,
+                ancho: espacio.ancho,
+                alto: espacio.alto - corte.alto
+            });
+
+            colocado = true;
+            break;
+            }
+        }
+
+        if (!colocado) {
+            console.log("No entra el corte", corte);
+            // Podríamos mostrar visualmente que no entró
+        }
+        }
+    });
+    }
+
+    
+    </script>
+</body>
+</html>
